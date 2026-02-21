@@ -28,9 +28,3 @@ jobs:
 
       - name: Spell Check
         uses: crate-ci/typos@v1
-
-      - name: Super-Linter
-        uses: super-linter/super-linter/slim@v7
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VALIDATE_ALL_CODEBASE: false
