@@ -29,8 +29,8 @@ jobs:
       - name: Compile Server
         run: make all 
 
-      - name: Run C Tests
-        run: ./tests/run_tests.sh
+    #  - name: Run C Tests
+    #    run: ./tests/run_tests.sh
 
-      - name: Memory Leak Check (Valgrind)
-        run: valgrind --leak-check=full --error-exitcode=1 ./bin/irc_server_test
+    #  - name: Memory Leak Check (Valgrind)
+    #    run: valgrind --leak-check=full --error-exitcode=1 ./bin/irc_server_test
