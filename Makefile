@@ -8,3 +8,4 @@ ircd: server/main.c
 
 clean:
 	rm -f server/ircd
+	
