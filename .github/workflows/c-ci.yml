@@ -29,6 +29,7 @@ jobs:
       - name: Compile Server
         run: make all 
 
+    # TODO: SHOULD BE ENABLED ONCE TESTS AVAILABLE
     #  - name: Run C Tests
     #    run: ./tests/run_tests.sh
 
