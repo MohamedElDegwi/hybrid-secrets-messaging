@@ -1,4 +1,4 @@
-name: Production Quality Gate
+name: Linter
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
