@@ -10,15 +10,15 @@ This is a terminal based messaging server that acts as a chat group for clients 
 * clients can send their messages to the server and its server duty to distribute those messages to all connected users.
 * server must be smart enough to not send the message again to the sender.
 * all messages must be fully encrypted before they reach the server and decrypted on the client side with some crypto mechanism
-* add a debuger that acts as "spoofer" that sniffs on the open socket try to sneak peek on messages.
+* add a debugger that acts as "spoofer" that sniffs on the open socket try to sneak peek on messages.
 * spoofer should see garbage data as well as server both should have no idea about the actual message content.
 * spoofer could be simple C program that listen to the same socket but "silently".
 
 ## Ideas to discuss
-this above functionallity is the core, but there is some nice to have ideas that i would love to hear your voice on.
+this above functionality is the core, but there is some nice to have ideas that i would love to hear your voice on.
 
 * should server have a context of connecting and disconnecting time of each registered user? 
-    the benifit of this is server can send all send messages to users that got send when they were away but that is optional.
+    the benefit of this is server can send all send messages to users that got send when they were away but that is optional.
 
 ## Suggested programming languages.
     C -> to manage the local relay server.

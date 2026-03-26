@@ -1,0 +1,37 @@
+name: C CI
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build & Test (C Server)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential valgrind libssl-dev
+
+      - name: Compile Server
+        run: make all 
+
+    # TODO: SHOULD BE ENABLED ONCE TESTS AVAILABLE
+    #  - name: Run C Tests
+    #    run: ./tests/run_tests.sh
+
+    #  - name: Memory Leak Check (Valgrind)
+    #    run: valgrind --leak-check=full --error-exitcode=1 ./bin/irc_server_test
