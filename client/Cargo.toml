@@ -5,4 +5,4 @@ edition = "2024"
 
 [[bin]]
 name = "client"
-path = "src/clients.rs"
+path = "src/main.rs"
