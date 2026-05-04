@@ -8,20 +8,24 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq)]
 pub enum MessageError {
-    WrongSignatureSize,
-    WrongPublicKeySize,
+    WrongSignatureSize(usize),
+    WrongPublicKeySize(usize),
     EmptyCipherText,
 }
 
 impl Display for MessageError {
     fn fmt(&self, f: &mut Formatter) -> fmtResult {
         let description = match *self {
-            MessageError::WrongSignatureSize => "Signature is wrong size. Must be 64 bytes",
-            MessageError::WrongPublicKeySize => "Public key is wrong size. Must be 32 bytes",
-            MessageError::EmptyCipherText => "Cipher text is empty. It must contain value",
+            MessageError::WrongSignatureSize(wrong_size) => {
+                format!("Signature is wrong size: {}. Must be 64 bytes", wrong_size)
+            }
+            MessageError::WrongPublicKeySize(wrong_size) => {
+                format!("Public key is wrong size: {}. Must be 32 bytes", wrong_size)
+            }
+            MessageError::EmptyCipherText => format!("Cipher text is empty. It must contain value"),
         };
 
-        f.write_str(description)
+        f.write_str(&description)
     }
 }
 
@@ -51,11 +55,11 @@ impl Message {
         signature: Vec<u8>,
     ) -> Result<Self, MessageError> {
         if pub_key.len() != 32 {
-            return Err(MessageError::WrongPublicKeySize);
+            return Err(MessageError::WrongPublicKeySize(pub_key.len()));
         }
 
         if signature.len() != 64 {
-            return Err(MessageError::WrongSignatureSize);
+            return Err(MessageError::WrongSignatureSize(signature.len()));
         }
 
         if cipher_text.is_empty() {
@@ -116,9 +120,9 @@ mod tests {
         let signature = vec![0u8; 6];
         let cipher_text = vec![0u8; 256];
 
-        let message = Message::new(pub_key, nonce, cipher_text, signature).unwrap_err();
+        let message = Message::new(pub_key, nonce, cipher_text, signature.clone()).unwrap_err();
 
-        assert_eq!(message, MessageError::WrongSignatureSize);
+        assert_eq!(message, MessageError::WrongSignatureSize(signature.len()));
     }
 
     #[test]
@@ -128,9 +132,9 @@ mod tests {
         let signature = vec![0u8; 64];
         let cipher_text = vec![0u8; 256];
 
-        let message = Message::new(pub_key, nonce, cipher_text, signature).unwrap_err();
+        let message = Message::new(pub_key.clone(), nonce, cipher_text, signature).unwrap_err();
 
-        assert_eq!(message, MessageError::WrongPublicKeySize);
+        assert_eq!(message, MessageError::WrongPublicKeySize(pub_key.len()));
     }
 
     #[test]
