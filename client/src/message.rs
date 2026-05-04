@@ -15,17 +15,20 @@ pub enum MessageError {
 
 impl Display for MessageError {
     fn fmt(&self, f: &mut Formatter) -> fmtResult {
-        let description = match *self {
+        match *self {
             MessageError::WrongSignatureSize(wrong_size) => {
-                format!("Signature is wrong size: {}. Must be 64 bytes", wrong_size)
+                write!(f, "Signature is wrong size: {wrong_size}. Must be 64 bytes")
             }
             MessageError::WrongPublicKeySize(wrong_size) => {
-                format!("Public key is wrong size: {}. Must be 32 bytes", wrong_size)
+                write!(
+                    f,
+                    "Public key is wrong size: {wrong_size}. Must be 32 bytes"
+                )
             }
-            MessageError::EmptyCipherText => format!("Cipher text is empty. It must contain value"),
-        };
-
-        f.write_str(&description)
+            MessageError::EmptyCipherText => {
+                f.write_str("Cipher text is empty. It must contain value")
+            }
+        }
     }
 }
 
