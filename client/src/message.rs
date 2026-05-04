@@ -1,3 +1,6 @@
+//! Message module provides the data contract for client-server communication.
+//! It defines the structures used for represent and validate client messages on the wire.
+
 use std::error::Error;
 use std::fmt::{Display, Formatter, Result as fmtResult};
 
@@ -6,15 +9,15 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, PartialEq)]
 pub enum MessageError {
     WrongSignatureSize,
-    WrongNonceSize,
+    WrongPublicKeySize,
     EmptyCipherText,
 }
 
 impl Display for MessageError {
     fn fmt(&self, f: &mut Formatter) -> fmtResult {
         let description = match *self {
-            MessageError::WrongNonceSize => "Nonce is wrong size. Must be 12 byte",
-            MessageError::WrongSignatureSize => "Signature is wrong size. Must be 64 byte",
+            MessageError::WrongSignatureSize => "Signature is wrong size. Must be 64 bytes",
+            MessageError::WrongPublicKeySize => "Public key is wrong size. Must be 32 bytes",
             MessageError::EmptyCipherText => "Cipher text is empty. It must contain value",
         };
 
@@ -24,54 +27,57 @@ impl Display for MessageError {
 
 impl Error for MessageError {}
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub struct SignedMessage {
-    sender: String,
-    nonce: Vec<u8>,
-    cipher_text: Vec<u8>,
-}
-
+/// Represents a single message block, containing sender public key, nonce, cipher text, and sender
+/// signature.
+///
+/// # Constraints
+/// - `pub_key` must be 32 bytes
+/// - `nonce` must be 12 bytes
+/// - `cipher_text` must not be empty
+/// - `signature` must be 64 bytes
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Message {
-    signed_message: SignedMessage,
+    pub_key: Vec<u8>,
+    nonce: [u8; 12],
+    cipher_text: Vec<u8>,
     signature: Vec<u8>,
 }
 
 impl Message {
     pub fn new(
-        sender: String,
-        nonce: Vec<u8>,
+        pub_key: Vec<u8>,
+        nonce: [u8; 12],
         cipher_text: Vec<u8>,
         signature: Vec<u8>,
     ) -> Result<Self, MessageError> {
-        // TODO: handle error in input here.
-
-        if nonce.len() != 12 {
-            return Err(MessageError::WrongNonceSize);
+        if pub_key.len() != 32 {
+            return Err(MessageError::WrongPublicKeySize);
         }
 
         if signature.len() != 64 {
             return Err(MessageError::WrongSignatureSize);
         }
 
-        if cipher_text.len() == 0 {
+        if cipher_text.is_empty() {
             return Err(MessageError::EmptyCipherText);
         }
 
-        let signed_message = SignedMessage {
-            sender,
+        Ok(Self {
+            pub_key,
             nonce,
             cipher_text,
-        };
-
-        Ok(Self {
-            signed_message,
             signature,
         })
     }
 
-    pub fn signed_message(&self) -> &SignedMessage {
-        &self.signed_message
+    pub fn pub_key(&self) -> &[u8] {
+        &self.pub_key
+    }
+    pub fn nonce(&self) -> &[u8] {
+        &self.nonce
+    }
+    pub fn cipher_text(&self) -> &[u8] {
+        &self.cipher_text
     }
     pub fn signature(&self) -> &[u8] {
         &self.signature
@@ -84,61 +90,57 @@ mod tests {
 
     #[test]
     fn happy_path() {
-        let sender = "random dude".to_string();
-        let nonce = vec![0u8; 12];
+        let pub_key = vec![0u8; 32];
+        let nonce = [0u8; 12];
         let signature = vec![0u8; 64];
-        let cipher_text = vec![0x0, 0x1];
+        let cipher_text = vec![0u8; 256];
 
         let message = Message::new(
-            sender.clone(),
+            pub_key.clone(),
             nonce.clone(),
             cipher_text.clone(),
             signature.clone(),
         )
         .unwrap();
 
-        let signed_message = SignedMessage {
-            sender: sender.clone(),
-            nonce: nonce.clone(),
-            cipher_text: cipher_text.clone(),
-        };
-
+        assert_eq!(pub_key, message.pub_key());
+        assert_eq!(nonce, message.nonce());
+        assert_eq!(cipher_text, message.cipher_text());
         assert_eq!(signature, message.signature());
-        assert_eq!(signed_message, *message.signed_message());
-    }
-
-    #[test]
-    fn wrong_nonce_size() {
-        let sender = "random dude".to_string();
-        let nonce = vec![0u8; 1];
-        let signature = vec![0u8; 64];
-        let cipher_text = vec![0x0, 0x1];
-
-        let message = Message::new(sender, nonce, cipher_text, signature).unwrap_err();
-
-        assert_eq!(message, MessageError::WrongNonceSize);
     }
 
     #[test]
     fn wrong_signature_size() {
-        let sender = "random dude".to_string();
-        let nonce = vec![0u8; 12];
+        let pub_key = vec![0u8; 32];
+        let nonce = [0u8; 12];
         let signature = vec![0u8; 6];
-        let cipher_text = vec![0x0, 0x1];
+        let cipher_text = vec![0u8; 256];
 
-        let message = Message::new(sender, nonce, cipher_text, signature).unwrap_err();
+        let message = Message::new(pub_key, nonce, cipher_text, signature).unwrap_err();
 
         assert_eq!(message, MessageError::WrongSignatureSize);
     }
 
     #[test]
+    fn wrong_pub_key_size() {
+        let pub_key = vec![0u8; 3];
+        let nonce = [0u8; 12];
+        let signature = vec![0u8; 64];
+        let cipher_text = vec![0u8; 256];
+
+        let message = Message::new(pub_key, nonce, cipher_text, signature).unwrap_err();
+
+        assert_eq!(message, MessageError::WrongPublicKeySize);
+    }
+
+    #[test]
     fn empty_cipher_text() {
-        let sender = "random dude".to_string();
-        let nonce = vec![0u8; 12];
+        let pub_key = vec![0u8; 32];
+        let nonce = [0u8; 12];
         let signature = vec![0u8; 64];
         let cipher_text = Vec::new();
 
-        let message = Message::new(sender, nonce, cipher_text, signature).unwrap_err();
+        let message = Message::new(pub_key, nonce, cipher_text, signature).unwrap_err();
 
         assert_eq!(message, MessageError::EmptyCipherText);
     }
