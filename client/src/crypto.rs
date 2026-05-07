@@ -1,5 +1,5 @@
-//! Crypto module provides the cryptographic operations needed to for enctypting, decrypting, and
-//! signing messages for end to end encryption.
+//! Crypto module provides the cryptographic operations needed to for enctypting, decrypting,
+//! signing, verifying, generating keys, and derive shared secret for E2EE operations.
 
 use std::error::Error;
 use std::fmt::{Display, Formatter, Result as fmtResult};
@@ -78,11 +78,11 @@ pub fn decrypt(payload: PayLoad, decryption_key: &[u8; 32]) -> Result<Vec<u8>, C
     Ok(message)
 }
 
-pub fn sign(payload: &PayLoad, signing_key: &[u8; 32]) -> Result<[u8; 64], CryptoErrors> {
+pub fn sign(payload: &PayLoad, signing_key: &[u8; 32]) -> [u8; 64] {
     let priv_key: SigningKey = SigningKey::from_bytes(signing_key);
     let signature: Signature = priv_key.sign(&payload.to_bytes());
 
-    Ok(signature.to_bytes())
+    signature.to_bytes()
 }
 
 pub fn verify(
@@ -99,6 +99,11 @@ pub fn verify(
         .map_err(|_| CryptoErrors::UnVerifiableMessage)?;
 
     Ok(())
+}
+
+pub fn generate_symmetric_key() -> [u8; 32] {
+    let encryption_key = Aes256Gcm::generate_key(OsRng);
+    encryption_key.into()
 }
 
 pub fn generate_key_pair(key_type: Algorithm) -> ([u8; 32], [u8; 32]) {
@@ -147,5 +152,44 @@ mod tests {
         let message = decrypt(payload, &encryption_key.into()).unwrap();
 
         assert_eq!(expected_message, message.as_slice())
+    }
+
+    #[test]
+    fn encrypt_empty_message() {
+        let message = Vec::default();
+
+        let encryption_key = generate_symmetric_key();
+
+        let err = encrypt(message, &encryption_key).unwrap_err();
+
+        assert_eq!(err, CryptoErrors::EmptyRawMessage)
+    }
+
+    #[test]
+    fn decrypt_tampered_cipher_text() {
+        let message: Vec<u8> = Vec::from(b"mrdigo: some super secret message!");
+        let encryption_key = generate_symmetric_key();
+        let mut payload = encrypt(message, &encryption_key).unwrap();
+
+        payload.cipher_text.iter_mut().for_each(|b| *b = 0xFF);
+
+        let err = decrypt(payload, &encryption_key).unwrap_err();
+
+        assert_eq!(err, CryptoErrors::TamperedMessage)
+    }
+
+    #[test]
+    fn verify_unverified_cipher_text() {
+        let message: Vec<u8> = Vec::from(b"mrdigo: some super secret message!");
+        let encryption_key = generate_symmetric_key();
+        let payload = encrypt(message, &encryption_key).unwrap();
+
+        let signing_key = generate_key_pair(Algorithm::Ed25519);
+        let signature = sign(&payload, &signing_key.0);
+
+        let wrong_key = generate_key_pair(Algorithm::Ed25519);
+        let err = verify(&payload, &signature, &wrong_key.1).unwrap_err();
+
+        assert_eq!(err, CryptoErrors::UnVerifiableMessage)
     }
 }
