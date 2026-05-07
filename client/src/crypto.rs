@@ -53,8 +53,8 @@ pub fn encrypt(message: Vec<u8>, encryption_key: &[u8; 32]) -> Result<PayLoad, C
     }
 
     let key: &Key<Aes256Gcm> = encryption_key.into();
-    let cipher = Aes256Gcm::new(&key);
-    let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+    let cipher = Aes256Gcm::new(key);
+    let nonce = Aes256Gcm::generate_nonce(OsRng);
 
     let cipher_text = cipher
         .encrypt(&nonce, message.as_ref())
@@ -69,7 +69,7 @@ pub fn encrypt(message: Vec<u8>, encryption_key: &[u8; 32]) -> Result<PayLoad, C
 
 pub fn decrypt(payload: PayLoad, decryption_key: &[u8; 32]) -> Result<Vec<u8>, CryptoErrors> {
     let key: &Key<Aes256Gcm> = decryption_key.into();
-    let cipher = Aes256Gcm::new(&key);
+    let cipher = Aes256Gcm::new(key);
 
     let message = cipher
         .decrypt(&payload.nonce.into(), payload.cipher_text.as_ref())
@@ -109,7 +109,7 @@ pub fn generate_key_pair(key_type: Algorithm) -> ([u8; 32], [u8; 32]) {
             (key_pair.to_bytes(), key_pair.verifying_key().to_bytes())
         }
         Algorithm::X25519 => {
-            let priv_key = StaticSecret::random_from_rng(&mut OsRng);
+            let priv_key = StaticSecret::random_from_rng(OsRng);
             let pub_key = PublicKey::from(&priv_key);
 
             (*priv_key.as_bytes(), *pub_key.as_bytes())
@@ -118,13 +118,13 @@ pub fn generate_key_pair(key_type: Algorithm) -> ([u8; 32], [u8; 32]) {
 } // Ok((priv_key, pub_key)) -- TODO: use struct User::KeyPair once it ready.
 
 pub fn generate_channel_key() -> [u8; 32] {
-    let channel_key = Aes256Gcm::generate_key(&mut OsRng);
+    let channel_key = Aes256Gcm::generate_key(OsRng);
 
     channel_key.into()
 }
 
 pub fn derive_shared_secret(pub_key: &[u8; 32]) -> [u8; 32] {
-    let priv_key = EphemeralSecret::random_from_rng(&mut OsRng);
+    let priv_key = EphemeralSecret::random_from_rng(OsRng);
     let pub_key = PublicKey::from(*pub_key);
     let shared_secret = priv_key.diffie_hellman(&pub_key);
 
