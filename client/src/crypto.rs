@@ -47,6 +47,26 @@ impl Display for CryptoErrors {
 
 impl Error for CryptoErrors {}
 
+#[derive(Debug, PartialEq)]
+pub struct KeyPair {
+    priv_key: [u8; 32],
+    pub_key: [u8; 32],
+}
+
+impl KeyPair {
+    pub fn new(priv_key: [u8; 32], pub_key: [u8; 32]) -> Self {
+        Self { priv_key, pub_key }
+    }
+
+    pub fn priv_key(&self) -> &[u8] {
+        &self.priv_key
+    }
+
+    pub fn pub_key(&self) -> &[u8] {
+        &self.pub_key
+    }
+}
+
 pub fn encrypt(message: Vec<u8>, encryption_key: &[u8; 32]) -> Result<PayLoad, CryptoErrors> {
     if message.is_empty() {
         return Err(CryptoErrors::EmptyRawMessage);
@@ -106,21 +126,20 @@ pub fn generate_symmetric_key() -> [u8; 32] {
     encryption_key.into()
 }
 
-pub fn generate_key_pair(key_type: Algorithm) -> ([u8; 32], [u8; 32]) {
+pub fn generate_key_pair(key_type: Algorithm) -> KeyPair {
     match key_type {
         Algorithm::Ed25519 => {
             let key_pair: SigningKey = SigningKey::generate(&mut OsRng);
-
-            (key_pair.to_bytes(), key_pair.verifying_key().to_bytes())
+            KeyPair::new(key_pair.to_bytes(), key_pair.verifying_key().to_bytes())
         }
         Algorithm::X25519 => {
             let priv_key = StaticSecret::random_from_rng(OsRng);
             let pub_key = PublicKey::from(&priv_key);
 
-            (*priv_key.as_bytes(), *pub_key.as_bytes())
+            KeyPair::new(priv_key.to_bytes(), pub_key.to_bytes())
         }
     }
-} // Ok((priv_key, pub_key)) -- TODO: use struct User::KeyPair once it ready.
+}
 
 pub fn generate_channel_key() -> [u8; 32] {
     let channel_key = Aes256Gcm::generate_key(OsRng);
@@ -185,10 +204,10 @@ mod tests {
         let payload = encrypt(message, &encryption_key).unwrap();
 
         let signing_key = generate_key_pair(Algorithm::Ed25519);
-        let signature = sign(&payload, &signing_key.0);
+        let signature = sign(&payload, &signing_key.priv_key);
 
         let wrong_key = generate_key_pair(Algorithm::Ed25519);
-        let err = verify(&payload, &signature, &wrong_key.1).unwrap_err();
+        let err = verify(&payload, &signature, &wrong_key.pub_key).unwrap_err();
 
         assert_eq!(err, CryptoErrors::UnVerifiableMessage)
     }
